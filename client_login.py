@@ -26,6 +26,7 @@ def login_client(email, password):
         print(f"[서버 응답] 상태 코드: {response.status_code}")
         print(f"[서버 응답] 내용:")
         print(json.dumps(response_data, indent=4, ensure_ascii=False))
+        return response_data
         
     except requests.exceptions.ConnectionError:
         print("[오류] 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인하세요.")

@@ -1,0 +1,33 @@
+처음 코드 작성하시는 분들을 위해.
+cmd or Powershell에서 저희가 작업하는 폴더로 이동 후,
+그 안에서 설치해야합니다!
+
+----------프로젝트 폴더에서----------
+
+# 플라스크 설치
+pip install Flask
+
+# 가상환경 생성
+python -m venv venv
+
+# 가상환경 실행
+.\\venv\\Scripts\\activate
+# 이후 명령어 입력칸 앞에 초록색 (venv)가 띄워져있어야 합니다.
+
+----------가상환경 내에서------------
+# 이후 설치 모듈들은 (venv)가 떠있는지 확인 후 설치 바람
+# HTTP 사용 모듈
+pip install requests 
+
+# 파이썬-MySQL 연동 모듈
+pip install mysql-connector-python
+
+# 비밀번호 암호화 모듈
+pip install Flask-Bcrypt
+
+# 현재 사용자 확인을 위한 토큰 모듈
+pip install Flask-JWT-Extended
+
+----------------이후------------------
+서버는 가상환경(venv) 안에서,
+클라이언트는 밖에서 테스트하시면 됩니다!
