@@ -21,7 +21,7 @@ def create_comment(post_id, user_id, comment_body):
         """
         cursor.execute(insert_query, (post_id, user_id, comment_body))
         
-        # 삽입된 ID를 SELECT LAST_INSERT_ID()를 사용하여 명확하게 가져옴
+        # [안정성 유지] 삽입된 ID를 SELECT LAST_INSERT_ID()를 사용하여 명확하게 가져옴
         cursor.execute("SELECT LAST_INSERT_ID()")
         new_comment_id = cursor.fetchone()[0]
         
@@ -49,11 +49,13 @@ def get_comments_by_post(post_id):
     try:
         cursor = conn.cursor()
         
-        # 댓글과 작성자 정보를 함께 조회: users 테이블의 email을 가져오도록 수정
+        # 댓글과 작성자 정보를 함께 조회: profiles 테이블의 name을 가져옴
+        # LEFT JOIN profiles를 사용하여 profiles 테이블에 항목이 없더라도 조회 가능하게 함
+        # COALESCE를 사용하여 name이 NULL일 경우 '익명'으로 표시
         select_query = """
-        SELECT c.comment_id, c.comment_body, c.created_at, u.email
+        SELECT c.comment_id, c.comment_body, c.created_at, COALESCE(p.name, '익명') AS user_name
         FROM comments c
-        JOIN users u ON c.user_id = u.id
+        LEFT JOIN profiles p ON c.user_id = p.user_id
         WHERE c.post_id = %s
         ORDER BY c.created_at ASC
         """
@@ -66,7 +68,7 @@ def get_comments_by_post(post_id):
                 "comment_id": row[0],
                 "body": row[1],
                 "created_at": row[2].strftime("%Y-%m-%d %H:%M:%S") if isinstance(row[2], datetime) else str(row[2]),
-                "user_email": row[3] # 닉네임 대신 이메일을 사용하도록 변경
+                "user_name": row[3] 
             }
             comments_list.append(comment)
             
