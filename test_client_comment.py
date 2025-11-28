@@ -1,103 +1,124 @@
-# client_comment.py
-# 댓글 API 호출 클라이언트 모듈 (JWT 사용)
+# test_comment_client.py
+# 댓글 기능의 클라이언트-서버-DB 연동을 테스트하는 통합 테스트 코드
 
-import requests
-import json
-import time # 댓글 생성 후 목록 조회까지 시간차를 두기 위해 추가 (선택 사항)
+from client_register import register_client
+from client_login import login_client
+from client_comment import create_comment_client, get_comments_client, update_comment_client, delete_comment_client
+import time
 
-SERVER_BASE_URL = "http://127.0.0.1:5000"
+# -------------------------- 테스트 환경 설정 --------------------------
 
-def call_api(method, url, token=None, json_data=None):
-    # API 요청 생성 및 전송
-    headers = {}
-    if token:
-        # JWT 토큰을 Authorization 헤더에 Bearer 형식으로 추가
-        headers['Authorization'] = f'Bearer {token}'
+# 테스트 사용자 정보
+TEST_USER_EMAIL = f"comment_user_{int(time.time())}@test.com"
+TEST_PASSWORD = "testpassword123!"
+
+# 다른 사용자 정보 (권한 테스트용)
+OTHER_USER_EMAIL = f"other_user_{int(time.time())}@test.com"
+
+# 테스트할 게시글 ID (DB에 존재하는 ID를 가정)
+TARGET_POST_ID = 1 
+
+# -------------------------- 테스트 실행 함수 --------------------------
+
+def run_comment_test():
+    print("=" * 60)
+    print("        댓글 기능 통합 테스트 시작 (작성자 이메일 확인)")
+    print("=" * 60)
+
+    # 1. 사용자 회원가입 및 로그인
+    print("\n--- 1. 사용자 1 (작성자) 회원가입 및 로그인 ---")
+    register_client(TEST_USER_EMAIL, TEST_PASSWORD)
+    login_result = login_client(TEST_USER_EMAIL, TEST_PASSWORD)
     
-    print(f"\n[CLIENT] {method} 요청 시도: {url}")
-    try:
-        response = requests.request(method, f"{SERVER_BASE_URL}{url}", headers=headers, json=json_data)
-        response_data = response.json()
-        
-        print(f"[서버 응답] 상태 코드: {response.status_code}")
-        print(f"[서버 응답] 내용:")
-        print(json.dumps(response_data, indent=4, ensure_ascii=False))
-        
-        return response.status_code, response_data
-        
-    except requests.exceptions.ConnectionError:
-        print("[오류] 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인하세요.")
-        return 500, None
-    except Exception as e:
-        print(f"[오류] 예외 발생: {e}")
-        return 500, None
-
-# -------------------------- 댓글 테스트 메인 함수 --------------------------
-
-if __name__ == '__main__':
-    TEST_EMAIL = "test_client123@test.com"
-    TEST_PASSWORD = "testpass222@"
-    
-    # 테스트 전, 이메일로 가입된 사용자(`server_login_register.py` 테스트 실행)와 
-    # 최소한 하나의 게시글(post_id=1)이 DB에 존재해야 합니다.
-    TEST_POST_ID = 1 
-    TEST_COMMENT_ID = None # 실제 생성된 ID를 저장할 변수
-
-    # 1. 로그인하여 토큰 획득
-    print("--- 1. 로그인하여 JWT 토큰 획득 ---")
-    login_url = "/login"
-    login_payload = {"email": TEST_EMAIL, "password": TEST_PASSWORD}
-    status, data = call_api('POST', login_url, json_data=login_payload)
-    
-    if status != 200 or 'access_token' not in data:
-        print("로그인 실패. 테스트를 중단합니다.")
-        exit()
-        
-    auth_token = data['access_token']
-    print(f"획득한 토큰: {auth_token[:20]}...")
-
-    # 2. 댓글 생성 테스트 (POST)
-    print("\n--- 2. 댓글 생성 테스트 (POST) ---")
-    comment_create_url = f"/api/posts/{TEST_POST_ID}/comments"
-    comment_payload = {"body": "첫 번째 테스트 댓글입니다."}
-    create_status, create_data = call_api('POST', comment_create_url, token=auth_token, json_data=comment_payload)
-
-    # 생성된 댓글 ID를 응답에서 추출
-    if create_status == 201 and 'comment_id' in create_data:
-        TEST_COMMENT_ID = create_data['comment_id']
-        print(f"[SUCCESS] 새로 생성된 댓글 ID: {TEST_COMMENT_ID} 추출 완료.")
-    elif create_status == 201:
-        # 서버에서 ID를 바로 주지 않을 경우, 목록 조회에서 ID를 얻어와야 함
-        print("[WARNING] POST 응답에 comment_id가 없습니다. 3단계에서 ID를 추출합니다.")
-        time.sleep(1) # 서버 처리를 기다림 (선택 사항)
+    if login_result and login_result.get("status") == "SUCCESS":
+        main_token = login_result.get("access_token")
+        print(f"[CHECK] 로그인 성공. 사용자 이메일: {TEST_USER_EMAIL}")
     else:
-        print("댓글 생성 실패. 테스트를 중단합니다.")
-        exit()
+        print("[FAIL] 로그인 실패. 테스트 중단.")
+        return
 
+    # 2. 다른 사용자 로그인 (권한 테스트용)
+    print("\n--- 2. 사용자 2 (타인) 회원가입 및 로그인 ---")
+    register_client(OTHER_USER_EMAIL, TEST_PASSWORD)
+    other_login_result = login_client(OTHER_USER_EMAIL, TEST_PASSWORD)
+    other_token = other_login_result.get("access_token") if other_login_result and other_login_result.get("status") == "SUCCESS" else None
 
-    # 3. 댓글 목록 조회 테스트 (GET)
-    print("\n--- 3. 댓글 목록 조회 테스트 (GET) ---")
-    list_status, list_data = call_api('GET', comment_create_url)
+    # 3. 댓글 생성 (사용자 1)
+    print(f"\n--- 3. 게시글 ID {TARGET_POST_ID}에 댓글 생성 시도 (작성자: {TEST_USER_EMAIL}) ---")
+    initial_comment = "첫 번째 댓글입니다. (생성 테스트)"
+    create_result = create_comment_client(TARGET_POST_ID, main_token, initial_comment)
     
-    # 목록에서 ID 추출 (POST 응답에 ID가 없었을 경우)
-    if TEST_COMMENT_ID is None and list_status == 200 and list_data.get('comments'):
-        TEST_COMMENT_ID = list_data['comments'][0]['comment_id']
-        print(f"[SUCCESS] 목록 조회에서 댓글 ID: {TEST_COMMENT_ID} 추출 완료.")
+    if create_result and create_result.get("status") == "SUCCESS":
+        created_comment_id = create_result.get("comment_id")
+        print(f"[SUCCESS] 댓글 생성 성공. ID: {created_comment_id}")
+    else:
+        print(f"[FAIL] 댓글 생성 실패. 응답: {create_result}")
+        return
 
-    if TEST_COMMENT_ID is None:
-        print("댓글 ID를 확보하지 못했습니다. 수정/삭제 테스트를 건너뜁니다.")
-        exit()
-
-    # 4. 댓글 수정 테스트 (PUT)
-    print(f"\n--- 4. 댓글 수정 테스트 (PUT) - ID: {TEST_COMMENT_ID} ---")
-    comment_update_url = f"/api/comments/{TEST_COMMENT_ID}"
-    update_payload = {"body": "수정된 멋진 댓글 내용입니다."}
-    call_api('PUT', comment_update_url, token=auth_token, json_data=update_payload)
+    # 4. 댓글 목록 조회 및 이메일 확인 (Read)
+    print(f"\n--- 4. 댓글 목록 조회 및 작성자 이메일 확인 ---")
+    comments_list_result = get_comments_client(TARGET_POST_ID)
     
-    # 5. 댓글 삭제 테스트 (DELETE)
-    print(f"\n--- 5. 댓글 삭제 테스트 (DELETE) - ID: {TEST_COMMENT_ID} ---")
-    call_api('DELETE', comment_update_url, token=auth_token)
+    if comments_list_result and comments_list_result.get("status") == "SUCCESS":
+        print(f"[SUCCESS] 댓글 총 {comments_list_result.get('total_comments')}개 조회 성공.")
+        
+        # 목록에서 첫 번째 댓글의 user_email 확인
+        first_comment = comments_list_result["comments"][0]
+        
+        # user_email 필드가 있는지, 그리고 그 값이 맞는지 확인
+        if "user_email" in first_comment and first_comment["user_email"] == TEST_USER_EMAIL:
+            print(f"[CHECK] 작성자 이메일 필드 확인 완료: {first_comment['user_email']}")
+            print(f"[CHECK] 댓글 내용: {first_comment['body']}")
+        else:
+            print(f"[FAIL] 댓글 작성자 이메일 필드 오류. 서버 응답 확인 필요.")
+    else:
+        print(f"[FAIL] 댓글 목록 조회 실패. 응답: {comments_list_result}")
+        return
 
-    # 6. 삭제 후 목록 재조회
-    print("\n--- 6. 삭제 후 목록 재조회 (확인) ---")
-    call_api('GET', comment_create_url)
+
+    # 5. 댓글 수정 시도 (Update) - 성공 (본인)
+    print(f"\n--- 5. 댓글 수정 시도 (본인 권한) ---")
+    updated_comment_body = "수정된 댓글 내용입니다."
+    update_result_self = update_comment_client(created_comment_id, main_token, updated_comment_body)
+    
+    if update_result_self and update_result_self.get("status") == "SUCCESS":
+        print("[SUCCESS] 댓글 수정 성공 (본인).")
+    else:
+        print(f"[FAIL] 댓글 수정 실패 (본인). 응답: {update_result_self}")
+
+
+    # 6. 댓글 수정 시도 (Update) - 실패 (타인)
+    print(f"\n--- 6. 댓글 수정 시도 (타인 권한) ---")
+    update_result_other = update_comment_client(created_comment_id, other_token, "타인이 수정하려는 내용")
+    
+    if update_result_other and update_result_other.get("message") == "권한 없음":
+        print("[SUCCESS] 댓글 수정 실패 (타인) - 권한 없음 응답 확인.")
+    else:
+        print(f"[FAIL] 댓글 수정 실패 (타인) - 예상치 못한 응답: {update_result_other}")
+
+
+    # 7. 댓글 삭제 시도 (Delete) - 성공 (본인)
+    print(f"\n--- 7. 댓글 삭제 시도 (본인 권한) ---")
+    delete_result_self = delete_comment_client(created_comment_id, main_token)
+    
+    if delete_result_self and delete_result_self.get("status") == "SUCCESS":
+        print("[SUCCESS] 댓글 삭제 성공 (본인).")
+    else:
+        print(f"[FAIL] 댓글 삭제 실패 (본인). 응답: {delete_result_self}")
+        
+    # 8. 삭제 후 댓글 목록 재조회 (비어 있어야 함)
+    print(f"\n--- 8. 댓글 삭제 후 재조회 ---")
+    final_check_result = get_comments_client(TARGET_POST_ID)
+    
+    if final_check_result and final_check_result.get("message") == "해당 게시글에 댓글이 없습니다.":
+        print("[SUCCESS] 댓글 삭제 후 목록 비어있음 확인.")
+    else:
+        print(f"[FAIL] 댓글 삭제 후 재조회 오류. 응답: {final_check_result}")
+
+    print("\n" + "=" * 60)
+    print("        댓글 기능 통합 테스트 완료")
+    print("=" * 60)
+
+# 파일이 직접 실행될 때 테스트 함수 호출
+if __name__ == '__main__':
+    run_comment_test()

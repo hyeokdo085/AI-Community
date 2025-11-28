@@ -16,18 +16,22 @@ def create_comment(post_id, user_id, comment_body):
         
         # a. 댓글 삽입
         insert_query = """
-        INSERT INTO comments (post_id, user_id, comment_body, created_at, updated_at) 
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO comments (post_id, user_id, comment_body) 
+        VALUES (%s, %s, %s)
         """
-        now = datetime.now()
-        cursor.execute(insert_query, (post_id, user_id, comment_body, now, now))
+        cursor.execute(insert_query, (post_id, user_id, comment_body))
+        
+        # 삽입된 ID를 SELECT LAST_INSERT_ID()를 사용하여 명확하게 가져옴
+        cursor.execute("SELECT LAST_INSERT_ID()")
+        new_comment_id = cursor.fetchone()[0]
         
         # b. posts 테이블의 comment_count 증가
         update_count_query = "UPDATE posts SET comment_count = comment_count + 1 WHERE post_id = %s"
         cursor.execute(update_count_query, (post_id,))
         
         conn.commit()
-        return {"status": "SUCCESS", "message": "댓글이 성공적으로 작성되었습니다."}
+        # 삽입된 댓글 ID를 반환하여 클라이언트에서 활용할 수 있게 함
+        return {"status": "SUCCESS", "message": "댓글이 성공적으로 작성되었습니다.", "comment_id": new_comment_id}
 
     except mysql.connector.Error as e:
         conn.rollback() 
@@ -36,36 +40,40 @@ def create_comment(post_id, user_id, comment_body):
     finally:
         close_connection(conn)
 
-# -------------------------- 2. 댓글 조회 (Read) --------------------------
+# -------------------------- 2. 댓글 목록 조회 (Read) --------------------------
 def get_comments_by_post(post_id):
     conn = get_connection()
     if not conn:
         return {"status": "FAILURE", "message": "DB 연결 실패"}
 
     try:
-        cursor = conn.cursor(dictionary=True) # 딕셔너리 형태로 결과 받기
+        cursor = conn.cursor()
         
-        # users 테이블과 조인하여 작성자의 이름(profiles.name)을 함께 조회하는 것이 일반적
-        # 현재 profiles 테이블에 'name'을 닉네임으로 가정하고 조회
+        # 댓글과 작성자 정보를 함께 조회: users 테이블의 email을 가져오도록 수정
         select_query = """
-        SELECT c.comment_id, c.comment_body, c.created_at, u.id AS user_id, p.name AS nickname
+        SELECT c.comment_id, c.comment_body, c.created_at, u.email
         FROM comments c
         JOIN users u ON c.user_id = u.id
-        LEFT JOIN profiles p ON u.id = p.user_id
         WHERE c.post_id = %s
         ORDER BY c.created_at ASC
         """
         cursor.execute(select_query, (post_id,))
-        comments = cursor.fetchall()
+        rows = cursor.fetchall()
         
-        if not comments:
+        comments_list = []
+        for row in rows:
+            comment = {
+                "comment_id": row[0],
+                "body": row[1],
+                "created_at": row[2].strftime("%Y-%m-%d %H:%M:%S") if isinstance(row[2], datetime) else str(row[2]),
+                "user_email": row[3] # 닉네임 대신 이메일을 사용하도록 변경
+            }
+            comments_list.append(comment)
+            
+        if not comments_list:
             return {"status": "FAILURE", "message": "해당 게시글에 댓글이 없습니다."}
-
-        # 날짜/시간 포맷팅
-        for comment in comments:
-            comment['created_at'] = comment['created_at'].strftime("%Y-%m-%d %H:%M:%S")
-
-        return {"status": "SUCCESS", "comments": comments}
+            
+        return {"status": "SUCCESS", "comments": comments_list, "total_comments": len(comments_list)}
 
     except mysql.connector.Error as e:
         return {"status": "FAILURE", "message": f"DB 처리 중 오류 발생: {e}"}
@@ -82,24 +90,22 @@ def update_comment(comment_id, user_id, new_body):
     try:
         cursor = conn.cursor()
         
-        # a. 권한 확인: 해당 댓글의 user_id가 요청한 user_id와 일치하는지 확인
-        check_owner_query = "SELECT user_id FROM comments WHERE comment_id = %s"
-        cursor.execute(check_owner_query, (comment_id,))
+        # a. 권한 확인: 댓글 작성자 ID와 수정 요청자 ID가 일치하는지 확인
+        check_query = "SELECT user_id FROM comments WHERE comment_id = %s"
+        cursor.execute(check_query, (comment_id,))
         result = cursor.fetchone()
 
         if not result:
             return {"status": "FAILURE", "message": "댓글을 찾을 수 없습니다."}
         
-        if result[0] != user_id:
+        comment_owner_id = result[0]
+        
+        if comment_owner_id != user_id:
             return {"status": "FAILURE", "message": "권한 없음"} # 403 Forbidden
-
+            
         # b. 댓글 수정
-        update_query = """
-        UPDATE comments SET comment_body = %s, updated_at = %s 
-        WHERE comment_id = %s
-        """
-        now = datetime.now()
-        cursor.execute(update_query, (new_body, now, comment_id))
+        update_query = "UPDATE comments SET comment_body = %s WHERE comment_id = %s"
+        cursor.execute(update_query, (new_body, comment_id))
         
         conn.commit()
         return {"status": "SUCCESS", "message": "댓글이 성공적으로 수정되었습니다."}
@@ -143,9 +149,9 @@ def delete_comment(comment_id, user_id):
         
         conn.commit()
         return {"status": "SUCCESS", "message": "댓글이 성공적으로 삭제되었습니다."}
-
+        
     except mysql.connector.Error as e:
-        conn.rollback() 
+        conn.rollback()
         return {"status": "FAILURE", "message": f"DB 처리 중 오류 발생: {e}"}
 
     finally:
