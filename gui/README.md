@@ -124,23 +124,15 @@ rmdir /s /q __pycache__
 python server_main.py
 ```
 
-### API 키 오류
-- Google AI Studio에서 새 API 키 발급
-- https://aistudio.google.com/app/apikey
 
-## 👥 팀 통합
 
-이 GUI는 기존 팀 프로젝트 구조와 완벽하게 호환됩니다:
-- `db_*` 파일: 영향 없음
-- `server_*` 파일: 영향 없음
-- `client_*` 파일: 영향 없음
-- `test_*` 파일: 영향 없음
 
----
 
-**Made with ❤️ for AI Community Team**
+
+
 
 v1.0.0 - 2025.11.29
+
 
 
 
