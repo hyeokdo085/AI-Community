@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="chat">
+    <aside class="chat__sidebar">
+        <h2>👤 현재 계정</h2>
+        <p>{{ user.email }}</p>
+        
+        <div style="margin: 2rem 0; padding: 1rem; background: var(--bg-input); border-radius: var(--radius-md); border: 2px solid var(--border-secondary);">
+            <h3 style="color: var(--secondary); font-size: 0.9rem; margin: 0 0 0.75rem; text-transform: uppercase; letter-spacing: 0.1em;">⚡ 단축키</h3>
+            <div style="color: var(--text-muted); font-size: 0.85rem; line-height: 2;">
+                <div><kbd style="background: var(--bg-dark); padding: 0.2rem 0.5rem; border-radius: 4px; color: var(--primary); border: 1px solid var(--border);">Alt + T</kbd> 테마 전환</div>
+                <div><kbd style="background: var(--bg-dark); padding: 0.2rem 0.5rem; border-radius: 4px; color: var(--primary); border: 1px solid var(--border);">Alt + R</kbd> 새로고침</div>
+                <div><kbd style="background: var(--bg-dark); padding: 0.2rem 0.5rem; border-radius: 4px; color: var(--primary); border: 1px solid var(--border);">Shift + Enter</kbd> 줄바꿈</div>
+                <div><kbd style="background: var(--bg-dark); padding: 0.2rem 0.5rem; border-radius: 4px; color: var(--primary); border: 1px solid var(--border);">Enter</kbd> 전송</div>
+            </div>
+        </div>
+        
+        <button id="refresh-history" type="button">🔄 기록 새로고침</button>
+        
+        <div style="margin-top: 2rem; padding: 1rem; background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(255, 0, 255, 0.1)); border-radius: var(--radius-md); border: 2px solid var(--border);">
+            <h3 style="color: var(--primary); font-size: 0.9rem; margin: 0 0 0.75rem; text-transform: uppercase; letter-spacing: 0.1em;">🤖 AI 정보</h3>
+            <div style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.8;">
+                <div style="margin-bottom: 0.5rem;">
+                    <strong style="color: var(--text-secondary);">모델:</strong>
+                    <span style="color: var(--text-primary);">Gemini 2.0 Flash</span>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <strong style="color: var(--text-secondary);">언어:</strong>
+                    <span style="color: var(--text-primary);">한국어</span>
+                </div>
+                <div>
+                    <strong style="color: var(--text-secondary);">상태:</strong>
+                    <span style="color: var(--success);">● 온라인</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+    
+    <div class="chat__body">
+        <div id="chat-log" class="chat__log" aria-live="polite" role="log"></div>
+        <form id="chat-form" class="chat__form">
+            <textarea 
+                name="message" 
+                rows="3" 
+                placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈, Enter로 전송)" 
+                required
+                aria-label="메시지 입력"
+            ></textarea>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <label class="inline">
+                    <input type="checkbox" name="ask_ai" checked>
+                    <span style="font-size: 1rem; font-weight: 600;">🤖 AI 응답 받기</span>
+                </label>
+                <button type="submit">전송 ✈️</button>
+            </div>
+        </form>
+    </div>
+</section>
+<script>
+    window.__AI_COMMUNITY_USER__ = {{ user|tojson }};
+</script>
+{% endblock %}
