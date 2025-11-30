@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title or "AI Community" }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <header class="top-bar">
+        <div class="top-bar__brand">⚡ AI COMMUNITY</div>
+        <div class="top-bar__actions">
+            {% if session.get("user") %}
+            <nav class="top-bar__nav">
+                <a href="{{ url_for('community_page') }}" class="nav-link {% if request.path == '/community' %}active{% endif %}">
+                    📝 커뮤니티
+                </a>
+                <a href="{{ url_for('chat_room') }}" class="nav-link {% if request.path == '/chat' %}active{% endif %}">
+                    💬 AI 채팅
+                </a>
+            </nav>
+            {% endif %}
+            <button type="button" id="theme-toggle" class="theme-toggle">🌙</button>
+            {% if session.get("user") %}
+            <form id="logout-form" method="post" action="{{ url_for('logout') }}" style="margin: 0;">
+                <button type="submit">로그아웃</button>
+            </form>
+            {% endif %}
+        </div>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    {% if request.path == '/community' %}
+    <script type="module" src="{{ url_for('static', filename='js/community.js') }}"></script>
+    {% else %}
+    <script type="module" src="{{ url_for('static', filename='js/chat.js') }}"></script>
+    {% endif %}
+</body>
+</html>
