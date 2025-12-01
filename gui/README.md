@@ -20,19 +20,10 @@ gui/
 
 ### 1. 파일 복사
 
-프로젝트 루트 디렉토리에서:
+gui 폴더 속 ai_service.py을 AI-Community 폴더로 이동 (필수!)
+경로 확인: C:\Users\Jeahun Ahn\Desktop\AI-Community\ai_service.py 파일이 있어야 합니다.
 
-```bash
-# ai_service.py 교체 (필수!)
-copy gui\ai_service.py .
-
-# static 폴더 교체
-copy gui\static\css\main.css static\css\
-copy gui\static\js\chat.js static\js\
-
-# templates 폴더 교체
-copy gui\templates\*.html templates\
-```
+서버 실행 전 DB 실행 필수(DB서버 안 열면 로그인이 안됨.)
 
 ### 2. 서버 실행
 
@@ -139,6 +130,7 @@ python server_main.py
 **Made with ❤️ for AI Community Team**
 
 v1.0.0 - 2025.11.29
+
 
 
 
